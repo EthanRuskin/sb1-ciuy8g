@@ -1,0 +1,182 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  name          String
+  role          UserRole  @default(USER)
+  organization  Organization? @relation(fields: [orgId], references: [id])
+  orgId         String?
+  team          Team?     @relation(fields: [teamId], references: [id])
+  teamId        String?
+  calls         Call[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  settings      UserSettings?
+  apiKeys       ApiKey[]
+  sessions      Session[]
+}
+
+model Organization {
+  id            String    @id @default(cuid())
+  name          String
+  plan          PlanType  @default(FREE)
+  users         User[]
+  teams         Team[]
+  subscription  Subscription?
+  settings      OrganizationSettings?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Team {
+  id            String    @id @default(cuid())
+  name          String
+  organization  Organization @relation(fields: [orgId], references: [id])
+  orgId         String
+  members       User[]
+  settings      TeamSettings?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Call {
+  id            String    @id @default(cuid())
+  user          User      @relation(fields: [userId], references: [id])
+  userId        String
+  customerName  String
+  duration      Int
+  recordingUrl  String?
+  transcription String?
+  sentiment     Sentiment @default(NEUTRAL)
+  status        CallStatus @default(COMPLETED)
+  notes         Note[]
+  tags          Tag[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Note {
+  id            String    @id @default(cuid())
+  call          Call      @relation(fields: [callId], references: [id])
+  callId        String
+  content       String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Tag {
+  id            String    @id @default(cuid())
+  name          String
+  calls         Call[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model UserSettings {
+  id            String    @id @default(cuid())
+  user          User      @relation(fields: [userId], references: [id])
+  userId        String    @unique
+  theme         Theme     @default(SYSTEM)
+  language      String    @default("en")
+  notifications Json
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model TeamSettings {
+  id            String    @id @default(cuid())
+  team          Team      @relation(fields: [teamId], references: [id])
+  teamId        String    @unique
+  settings      Json
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model OrganizationSettings {
+  id            String    @id @default(cuid())
+  organization  Organization @relation(fields: [orgId], references: [id])
+  orgId         String    @unique
+  settings      Json
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Subscription {
+  id            String    @id @default(cuid())
+  organization  Organization @relation(fields: [orgId], references: [id])
+  orgId         String    @unique
+  stripeCustomerId String?
+  stripeSubscriptionId String?
+  status        SubscriptionStatus
+  currentPeriodEnd DateTime
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model ApiKey {
+  id            String    @id @default(cuid())
+  user          User      @relation(fields: [userId], references: [id])
+  userId        String
+  key           String    @unique
+  name          String
+  lastUsed      DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Session {
+  id            String    @id @default(cuid())
+  user          User      @relation(fields: [userId], references: [id])
+  userId        String
+  token         String    @unique
+  expiresAt     DateTime
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  TEAM_LEADER
+}
+
+enum PlanType {
+  FREE
+  STANDARD
+  TEAMS
+  ENTERPRISE
+}
+
+enum Theme {
+  LIGHT
+  DARK
+  SYSTEM
+}
+
+enum Sentiment {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+}
+
+enum CallStatus {
+  COMPLETED
+  IN_PROGRESS
+  CANCELLED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  UNPAID
+}
